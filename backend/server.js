@@ -6,6 +6,14 @@ const app = express();
 app.use(cors());
 app.use(bodyParser.urlencoded({ extended: true }));
 
+const admin = require("firebase-admin");
+const serviceAccount = require("./serviceAccountKey.json");
+
+admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount)
+});
+
+const db = admin.firestore();
 app.post('/saveTaps', async (req, res) => {
     try {
         const sessionId = req.body.id;
@@ -13,10 +21,11 @@ app.post('/saveTaps', async (req, res) => {
         const tapsArray = JSON.parse(req.body.taps);
 
         // Process each tap individually
-        tapsArray.forEach((tap) => {
+        tapsArray.forEach(async (tap) => {
 
-            // skip invalid taps
             if (!tap.startTimestamp || !tap.endTimestamp) return;
+
+            const duration = tap.endTimestamp - tap.startTimestamp;
 
             const tapRecord = {
                 sessionId: sessionId,
@@ -24,10 +33,15 @@ app.post('/saveTaps', async (req, res) => {
                 tapSequenceNumber: tap.tapSequenceNumber,
                 startTimestamp: tap.startTimestamp,
                 endTimestamp: tap.endTimestamp,
-                interface: tap.interface
+                duration: duration,
+                interface: tap.interface,
+                interfaceSequence: tap.interfaceSequence,
+                createdAt: new Date()
             };
 
-            console.log("Tap Record:", tapRecord);
+            console.log("Saving:", tapRecord);
+
+            await db.collection("tap_logs").add(tapRecord);
         });
 
         res.send("Data saved successfully");

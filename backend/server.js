@@ -16,39 +16,34 @@ admin.initializeApp({
 const db = admin.firestore();
 app.post('/saveTaps', async (req, res) => {
     try {
-        const sessionId = req.body.id;
-        const device = req.body.var;
-        const tapsArray = JSON.parse(req.body.taps);
+        const { id: sessionId, var: device, taps } = req.body;
+        const tapsArray = JSON.parse(taps);
 
-        // Process each tap individually
-        tapsArray.forEach(async (tap) => {
-
-            if (!tap.startTimestamp || !tap.endTimestamp) return;
-
-            const duration = tap.endTimestamp - tap.startTimestamp;
+        const tapPromises = tapsArray.map(tap => {
+            if (!tap.startTimestamp || !tap.endTimestamp) return Promise.resolve();
 
             const tapRecord = {
-                sessionId: sessionId,
-                device: device,
+                sessionId,
+                device,
                 tapSequenceNumber: tap.tapSequenceNumber,
-                startTimestamp: tap.startTimestamp,
-                endTimestamp: tap.endTimestamp,
-                duration: duration,
+                startTimestamp: new Date(tap.startTimestamp),
+                endTimestamp: new Date(tap.endTimestamp),
+                duration: tap.endTimestamp - tap.startTimestamp,
                 interface: tap.interface,
-                interfaceSequence: tap.interfaceSequence,
-                createdAt: new Date()
+                createdAt: admin.firestore.FieldValue.serverTimestamp() // Use server-side time
             };
 
-            console.log("Saving:", tapRecord);
-
-            await db.collection("tap_logs").add(tapRecord);
+            return db.collection("tap_logs").add(tapRecord);
         });
 
-        res.send("Data saved successfully");
+        // Wait for ALL writes to finish before responding
+        await Promise.all(tapPromises);
+
+        res.status(200).json({ message: "All taps saved successfully" });
 
     } catch (err) {
-        console.error(err);
-        res.status(500).send("Error");
+        console.error("Firestore Save Error:", err);
+        res.status(500).send("Internal Server Error");
     }
 });
 

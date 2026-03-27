@@ -32,13 +32,14 @@ app.post('/saveTaps', async (req, res) => {
                 interface: tap.interface,
                 createdAt: admin.firestore.FieldValue.serverTimestamp() // Use server-side time
             };
+            console.log("Saving:", tapRecord);
 
             return db.collection("tap_logs").add(tapRecord);
         });
 
         // Wait for ALL writes to finish before responding
         await Promise.all(tapPromises);
-
+        console.log(" ==== All taps saved successfully ====");
         res.status(200).json({ message: "All taps saved successfully" });
 
     } catch (err) {

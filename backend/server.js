@@ -40,8 +40,7 @@ app.post('/saveTaps', async (req, res) => {
         // Wait for ALL writes to finish before responding
         await Promise.all(tapPromises);
         console.log("Data saved successfully");
-        res.status(200).json({ message: "Data saved successfully" });
-
+        res.status(200).send("Data saved successfully");
     } catch (err) {
         console.error("Firestore Save Error:", err);
         res.status(500).send("Internal Server Error");
